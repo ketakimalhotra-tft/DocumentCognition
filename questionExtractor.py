@@ -1,6 +1,9 @@
 from haystack.question_generator import QuestionGenerator
 from haystack.document_store import ElasticsearchDocumentStore
 from haystack.pipeline import QuestionGenerationPipeline
+from haystack.pipeline import ExtractiveQAPipeline
+from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.reader.farm import FARMReader
 from networkx.algorithms.link_prediction import resource_allocation_index
 import es
 import PyPDF2
@@ -12,7 +15,7 @@ import PyPDF2
 
 
 
-f_path = "enter-path-to-pdf"
+f_path = "/home/deepak/DocumentCognition/no_images_bakery_new.pdf"
 index_name = "seventhhaven"
 
 
@@ -63,12 +66,34 @@ document_store = ElasticsearchDocumentStore(host="localhost",
 
 # Initialize Question Generator
 question_generator = QuestionGenerator()
-
+questions = []
 question_generation_pipeline = QuestionGenerationPipeline(question_generator)
 for document in document_store:
         result = question_generation_pipeline.run(documents=[document])
+        questions.append(result['generated_questions'][0]['questions'])
         print("QUESTIONS",":",result['generated_questions'][0]['questions'])
+        break
+        #print(result)
+
+final_question_list = [ques for li in questions for ques in li]
 
 
+print("Buildingretriever ")
+retriever = ElasticsearchRetriever(document_store = document_store)
+print("Building reader ")
 
+reader = FARMReader(
+	#model_name_or_path = "deepset/roberta-base-squad2", 
+  model_name_or_path = "deepset/minilm-uncased-squad2", 
+	use_gpu = False
+	)
+#reader.save("/app/actions/pipelines/reader")
 
+print("Building pipe ")
+
+pipe = ExtractiveQAPipeline(reader, retriever)
+print("Building predicting ")
+
+for i in final_question_list:
+  prediction = pipe.run(query=i,params={"Retriever": {"top_k": 5}, "Reader": {"top_k": 3}})
+  print(prediction) 
