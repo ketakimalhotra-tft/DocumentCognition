@@ -15,7 +15,7 @@ import PyPDF2
 
 
 
-f_path = "/home/deepak/DocumentCognition/no_images_bakery_new.pdf"
+f_path = "path-to-pdf"
 index_name = "seventhhaven"
 
 
